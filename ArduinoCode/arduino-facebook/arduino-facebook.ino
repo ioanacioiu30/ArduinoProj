@@ -1,64 +1,84 @@
-/*
-  LiquidCrystal Library - Hello World
-
- Demonstrates the use a 16x2 LCD display.  The LiquidCrystal
- library works with all LCD displays that are compatible with the
- Hitachi HD44780 driver. There are many of them out there, and you
- can usually tell them by the 16-pin interface.
-
- This sketch prints "Hello World!" to the LCD
- and shows the time.
-
-  The circuit:
- * LCD RS pin to digital pin 12
- * LCD Enable pin to digital pin 11
- * LCD D4 pin to digital pin 5
- * LCD D5 pin to digital pin 4
- * LCD D6 pin to digital pin 3
- * LCD D7 pin to digital pin 2
- * LCD R/W pin to ground
- * LCD VSS pin to ground
- * LCD VCC pin to 5V
- * 10K resistor:
- * ends to +5V and ground
- * wiper to LCD VO pin (pin 3)
-
- Library originally added 18 Apr 2008
- by David A. Mellis
- library modified 5 Jul 2009
- by Limor Fried (http://www.ladyada.net)
- example added 9 Jul 2009
- by Tom Igoe
- modified 22 Nov 2010
- by Tom Igoe
- modified 7 Nov 2016
- by Arturo Guadalupi
-
- This example code is in the public domain.
-
- http://www.arduino.cc/en/Tutorial/LiquidCrystalHelloWorld
-
-*/
-
-// include the library code:
-#include <LiquidCrystal.h>
-
-// initialize the library by associating any needed LCD interface pin
-// with the arduino pin number it is connected to
-const int rs = 12, en = 11, d4 = 5, d5 = 4, d6 = 3, d7 = 2;
-LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
-
+#include<LiquidCrystal.h>
+int CONTRAST           = 90;
+int BACKLIGHT          = 20;
+unsigned long oldTime = 0;
+int strLength         = 0;
+char *substr;
+//defining lcd pins
+LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
 void setup() {
-  // set up the LCD's number of columns and rows:
-  lcd.begin(16, 2);
-  // Print a message to the LCD.
-  lcd.print("hello, world!");
+  analogWrite(6, CONTRAST);
+  analogWrite(9, BACKLIGHT);
+  Serial.begin(9600);
+  Serial.setTimeout(50);
+  lcd.begin(16,2);
 }
-
 void loop() {
-  // set the cursor to column 0, line 1
-  // (note: line 1 is the second row, since counting begins with 0):
-  lcd.setCursor(0, 1);
-  // print the number of seconds since reset:
-  lcd.print(millis() / 1000);
+    String text = Serial.readString();
+    //Process only if the text received on serial is not empty
+    if(text.length() > 0) {
+       // Convert from String Object to String, so we can use strtok
+      char buf[text.length()+1];
+      strncpy(buf, text.c_str(), text.length());
+      buf[text.length()] = 0;
+      char *p = buf;
+      char *str;
+      Serial.print(buf);
+      while ((str = strtok_r(p, "|", &p)) != NULL){
+        /*
+         *Print the parts on the display
+         */
+        printOnDisplay(str, strlen(str));
+        /*
+         *We need a little delay between print and clear
+         */
+        delay(500);
+        lcd.clear();
+        delay(500);
+      }
+    }
+}
+//function that helps at printing {str} on lcd
+void printOnDisplay(char *str,  int n) {
+  /*
+   * If string is bigger thatn the screen,
+    scroll it
+  */
+  if(n >= 15) {
+      /*
+       * First, print the first 15 chars,
+      then scroll whenever a nea char is printed
+      */
+      substr = new char [15];
+      strncpy(substr, str, 15);
+      substr[15] = '\0';
+      lcd.print(substr);
+      /*
+       * Small delay so we can read the first 15 chars
+       * before animating
+      */
+      delay(300);
+      /*Enable autoscroll*/
+      lcd.autoscroll();
+      int i = 15;
+      /*Print the rest of the chars*/
+      while(i < n) {
+        lcd.print(str[i]);
+        delay(300);
+        i++;
+      }
+       // turn off automatic scrolling
+      lcd.noAutoscroll();
+      delay(1300);
+  } else {
+    /*If string is smaller than lcd display,
+      just print it
+    */
+    Serial.println("Smaller string");
+    lcd.print(str);
+    delay(1300);
+  }
+}
+void clearDisplay() {
+    lcd.clear();
 }
